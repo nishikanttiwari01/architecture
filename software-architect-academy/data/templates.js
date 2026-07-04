@@ -1,0 +1,212 @@
+/* templates.js — editable documentation templates. f() = field {label, hint, kind} */
+(function (D) {
+  'use strict';
+  function f(label, hint, kind) { return { label: label, hint: hint || '', kind: kind || 'long' }; }
+
+  D.templates = [
+    { id: 'architecture-vision', name: 'Architecture Vision', desc: 'Why the initiative exists and where it is heading — for sponsors.', fields: [
+      f('Business context and problem', 'What hurts today, in business terms, with numbers where possible.'),
+      f('Vision statement', 'One paragraph: the future state and why it matters.', 'short'),
+      f('Business goals and success measures', 'Each goal with a measurable outcome and date.'),
+      f('Scope and out-of-scope', 'Be explicit about what this does NOT cover.'),
+      f('Target-state outline', 'Capability/container level only — no implementation detail.'),
+      f('Key stakeholders', 'Sponsor, business owner, affected teams, governance.'),
+      f('Major risks and dependencies', 'Top 5 only; details live in the registers.'),
+      f('Indicative roadmap and investment', 'Phases with rough sizing; confidence levels stated.')] },
+    { id: 'solution-overview', name: 'Solution Overview / High-Level Design', desc: 'The workhorse document: 10 readable pages beating 60 skimmed ones.', fields: [
+      f('Problem statement and drivers', 'Goals, functional scope, dominant quality attributes, constraints.'),
+      f('System context', 'Users and neighbouring systems with labelled interactions (paste/describe the context diagram).'),
+      f('Container view', 'Deployable pieces, technologies, protocols between them.'),
+      f('Key decisions (ADR list)', 'Link each significant decision to its ADR with one-line summary.'),
+      f('Non-functional requirements', 'Measurable scenarios: latency percentiles, availability, RTO/RPO, audit.'),
+      f('Integration list', 'Every interface: counterpart, style, contract, owner.'),
+      f('Data ownership and flows', 'Systems of record, derived stores, reconciliations.'),
+      f('Deployment and environments', 'Zones/regions, scaling, release approach.'),
+      f('Security summary', 'AuthN/Z model, data classification, threat-model highlights.'),
+      f('Operational model', 'Who runs it, SLOs, monitoring, runbooks.'),
+      f('Risks, assumptions, open points', 'With owners and dates.')] },
+    { id: 'system-context', name: 'System Context Document', desc: 'The system, its users, and its neighbours — the alignment artifact.', fields: [
+      f('System purpose', 'One paragraph, business language.', 'short'),
+      f('Users and roles', 'Who interacts, how often, to do what.'),
+      f('Neighbouring systems', 'Each with direction, protocol, data exchanged, owner.'),
+      f('System boundary decisions', 'What is deliberately inside vs outside, and why.'),
+      f('Context diagram notes', 'Describe or reference the C4 context diagram.')] },
+    { id: 'current-state', name: 'Current-State Architecture', desc: 'Honest archaeology of what runs today.', fields: [
+      f('Systems inventory', 'Name, purpose, owner, lifecycle status, run cost if known.'),
+      f('Integration map', 'Every flow: style, frequency, data, owner — including the undocumented ones.'),
+      f('Data masters', 'Which system masters which entity today (and where it is contested).'),
+      f('Known pain points', 'Incidents, bottlenecks, manual workarounds, key-person risks.'),
+      f('Why it is this way', 'The old constraints that shaped it — and which still apply.')] },
+    { id: 'target-state', name: 'Target-State Architecture', desc: 'The destination at the right altitude.', fields: [
+      f('Target capabilities and systems', 'Capability → system mapping in the target.'),
+      f('Target integration architecture', 'Styles, backbone, contracts.'),
+      f('Target data architecture', 'Masters, derived stores, flows.'),
+      f('NFR posture', 'Availability tiers, RTO/RPO, audit posture in the target.'),
+      f('What is deliberately NOT specified yet', 'Detail deferred to delivery, and why that is safe.')] },
+    { id: 'principles', name: 'Architecture Principles', desc: '7–12 principles that bite.', fields: [
+      f('Principle 1: statement / rationale / implications', 'A principle without a trade-off is decoration.'),
+      f('Principle 2: statement / rationale / implications', ''),
+      f('Principle 3: statement / rationale / implications', ''),
+      f('Principle 4: statement / rationale / implications', ''),
+      f('Principle 5: statement / rationale / implications', ''),
+      f('Further principles', 'Add more as needed — but past ~12 they stop being remembered.'),
+      f('Exception process', 'How teams deviate legitimately: request, owner, expiry, telemetry.')] },
+    { id: 'adr', name: 'Architecture Decision Record (short form)', desc: 'The everyday ADR. For major decisions use the full ADR Wizard.', fields: [
+      f('Title', 'The decision, not the topic: "Use transactional outbox for screening events".', 'short'),
+      f('Status', 'Proposed / Accepted / Superseded by ADR-xxx.', 'short'),
+      f('Context', 'The forces: drivers, constraints, and the problem — readable by a newcomer in two years.'),
+      f('Options considered', 'Each with honest pros/cons. Include "do nothing" if credible.'),
+      f('Decision', 'One clear statement, active voice.', 'short'),
+      f('Consequences', 'Including the negative ones you are accepting, and follow-up obligations.'),
+      f('Review date', 'Decisions rot — set one.', 'short')] },
+    { id: 'hld', name: 'High-Level Design (component)', desc: 'Per-component design at architecture altitude.', fields: [
+      f('Component purpose and responsibilities', 'What it owns; what it explicitly does not.'),
+      f('Interfaces provided and consumed', 'APIs, events, files — with contracts and versions.'),
+      f('Data owned', 'Entities mastered, stores used, retention.'),
+      f('Key internal structure', 'Only what matters to reviewers (e.g. hexagonal package layout).'),
+      f('NFR handling', 'How this component meets its share of latency/availability/audit budgets.'),
+      f('Failure behaviour', 'Per dependency: timeout, fallback, degraded mode.'),
+      f('Open questions', '')] },
+    { id: 'lld', name: 'Low-Level Design', desc: 'Team-owned detail; architect reviews rather than writes.', fields: [
+      f('Detailed component structure', 'Classes/modules where genuinely useful.'),
+      f('Data model (physical)', 'Tables, indexes, partitioning, migrations.'),
+      f('API specifications', 'Endpoints, payloads, errors, idempotency, versioning.'),
+      f('Processing logic for critical flows', 'Sequence descriptions incl. failure branches.'),
+      f('Configuration and feature flags', ''),
+      f('Test approach', 'Unit/slice/integration/contract coverage intent.')] },
+    { id: 'nfr-doc', name: 'Non-Functional Requirements', desc: 'Measurable scenarios per quality attribute.', fields: [
+      f('Performance scenarios', 'Load, operation, percentiles, measurement point.'),
+      f('Availability & resilience', 'Targets per journey; degraded modes; RTO/RPO.'),
+      f('Scalability', 'Growth assumptions, headroom target, trigger for redesign.'),
+      f('Security & privacy', 'Controls as verifiable requirements.'),
+      f('Auditability', 'What is evidenced, retention, reconstruction SLA.'),
+      f('Observability', 'SLIs, correlation, alerting conditions.'),
+      f('Data integrity', 'Reconciliations and their SLAs.'),
+      f('Cost', 'Unit-economics target.'),
+      f('Accepted trade-offs', 'Which qualities lose when they conflict, per business agreement.')] },
+    { id: 'interface-catalogue', name: 'Interface Catalogue', desc: 'Every integration, owned and described.', fields: [
+      f('Interface entries', 'Per interface: name, provider, consumers, style (REST/event/file/batch), contract ref, version, SLA, owner, change process. One block per interface.'),
+      f('Deprecation status', 'Interfaces scheduled for retirement, with dates and remaining consumers.')] },
+    { id: 'api-checklist', name: 'API Specification Checklist', desc: 'Applied per API before publication.', fields: [
+      f('Contract', 'OpenAPI complete? Errors modelled? Examples included?'),
+      f('Semantics', 'Idempotency on unsafe methods? Pagination/filtering on collections?'),
+      f('Security', 'AuthN/Z per endpoint, audience validation, field masking by entitlement.'),
+      f('Operations', 'Rate limits, timeouts documented, correlation IDs, deprecation policy.'),
+      f('Testing', 'Contract tests wired? Consumer sign-off?')] },
+    { id: 'event-catalogue', name: 'Event Catalogue', desc: 'Integration events as governed contracts.', fields: [
+      f('Event entries', 'Per event: name, producer/owner, consumers, key, payload summary, sensitivity, schema ref + compatibility mode, ordering, idempotency expectations, reconciliation. One block per event.'),
+      f('Versioning status', 'Events with parallel major versions and their migration deadlines.')] },
+    { id: 'kafka-catalogue', name: 'Kafka Topic Catalogue', desc: 'The operational register of topics.', fields: [
+      f('Topic entries', 'Per topic: name, purpose, key, partitions, replication, retention/compaction, ACLs (producers/consumers), schema subject, owner.'),
+      f('Capacity notes', 'Hot topics, growth expectations, partition headroom.'),
+      f('DLT register', 'Each DLT with owner, alert route, runbook link.')] },
+    { id: 'dataflow-inventory', name: 'Data-Flow Inventory', desc: 'Where data moves — the compliance and threat-model feedstock.', fields: [
+      f('Flow entries', 'Per flow: source, destination, data categories, classification, mechanism, frequency, lawful basis where personal data.'),
+      f('Cross-border flows', 'Jurisdictions involved and transfer basis.'),
+      f('Reconciliation coverage', 'Which flows have reconciliations; gaps flagged.')] },
+    { id: 'security-assessment', name: 'Security Assessment', desc: 'The design-time security review record.', fields: [
+      f('Scope and data classification', 'What is assessed; highest data class handled.'),
+      f('Trust boundaries', 'From the DFD: every crossing listed.'),
+      f('Controls in place', 'AuthN/Z, encryption, secrets, segmentation, logging.'),
+      f('Findings and risks', 'Each with severity, owner, remediation date.'),
+      f('Residual risk statement', 'What remains after mitigations, accepted by whom.')] },
+    { id: 'threat-model', name: 'Threat Model', desc: 'STRIDE walk output.', fields: [
+      f('System description and DFD', 'Elements, flows, trust boundaries.'),
+      f('Threats identified (STRIDE per element)', 'Threat, category, affected element, likelihood/impact.'),
+      f('Mitigations', 'Per threat: mitigate/eliminate/transfer/accept with owner.'),
+      f('Verification plan', 'Tests, scans, pentest scope derived from this model.'),
+      f('Review cadence', 'When this model is revisited (design changes trigger it).', 'short')] },
+    { id: 'risk-register', name: 'Risk Register', desc: 'Living, owned, reviewed.', fields: [
+      f('Risk entries', 'Per risk: description, likelihood, impact, owner, mitigation, status, review date.'),
+      f('Accepted risks', 'Explicitly accepted, by whom, with expiry.'),
+      f('Escalation triggers', 'What promotes a risk to management attention.')] },
+    { id: 'assumption-log', name: 'Assumption Log', desc: 'Every assumption is a risk in disguise.', fields: [
+      f('Assumption entries', 'Per assumption: statement, impact if wrong, validation plan, owner, status.'),
+      f('Validated / invalidated history', 'Keep the outcomes — they teach.')] },
+    { id: 'dependency-register', name: 'Dependency Register', desc: 'Who and what you are waiting on.', fields: [
+      f('Dependency entries', 'Per dependency: what, on whom, needed by, status, impact of slip, mitigation.'),
+      f('Critical path notes', 'Which dependencies gate which milestones.')] },
+    { id: 'tech-evaluation', name: 'Technology Evaluation', desc: 'Structured selection record.', fields: [
+      f('Requirement summary', 'Written before looking at products.'),
+      f('Candidates and shortlist rationale', ''),
+      f('Evaluation criteria and weights', 'Agreed before scoring.'),
+      f('Scores and evidence', 'Including PoC/spike results, not just datasheets.'),
+      f('Decision and rejected options', 'Feed into an ADR.'),
+      f('Exit considerations', 'How we would leave this technology later.')] },
+    { id: 'bvb-assessment', name: 'Build-versus-Buy Assessment', desc: 'Companion to the interactive matrix.', fields: [
+      f('Capability being sourced', '', 'short'),
+      f('Options in scope', 'Build/buy/open-source/reuse/extend/integrate/replace/retire/nothing — which are credible here.'),
+      f('Hard constraints applied first', 'Regulation, residency, procurement, skills — options eliminated before scoring.'),
+      f('Matrix results and sensitivity', 'Winner; which weight changes would flip it.'),
+      f('Hidden costs analysis', 'Integration, customisation debt, exit, operational ownership.'),
+      f('Recommendation and conditions', 'Including what would reopen the decision.')] },
+    { id: 'migration-strategy', name: 'Migration Strategy', desc: 'The path, not just the destination.', fields: [
+      f('Scope and approach', 'Strangler/parallel-run/cutover — and why.'),
+      f('Phases and slices', 'Each leaving the estate stable, operable, reversible.'),
+      f('Data migration plan', 'Profiling results, ownership per phase, validation beyond row counts.'),
+      f('Coexistence mechanisms', 'Facades, syncs, CDC — each with a retirement date.'),
+      f('Reconciliation during parallel run', 'What is compared, how often, break handling.'),
+      f('Cutover runbook summary', 'Go/no-go criteria, timings, roles, communications.'),
+      f('Rollback triggers and paths', 'Objective thresholds; per-phase reversibility.')] },
+    { id: 'deployment-model', name: 'Deployment Model', desc: 'Where and how it runs.', fields: [
+      f('Topology', 'Regions/zones, clusters, instance counts.'),
+      f('Scaling behaviour', 'Autoscaling triggers, limits, tested headroom.'),
+      f('Release approach', 'Rolling/blue-green/canary; schema compatibility discipline.'),
+      f('Configuration and secrets', 'Sources, injection, rotation.'),
+      f('Network and access', 'Segmentation, ingress/egress, private endpoints.')] },
+    { id: 'ops-readiness', name: 'Operational Readiness Checklist (document)', desc: 'Sign-off record before go-live.', fields: [
+      f('SLOs and dashboards', 'Links and screenshots; per-journey SLIs.'),
+      f('Alerting', 'Each alert actionable with runbook link; noise review done.'),
+      f('Runbooks', 'Top predictable failures covered; rehearsed by whom, when.'),
+      f('Capacity evidence', 'Load-test results vs calendar peaks.'),
+      f('Backup/DR evidence', 'Last restore test; RTO/RPO achieved.'),
+      f('On-call and escalation', 'Rota, roles, contacts.'),
+      f('Open gaps and accepted go-live risks', 'With owners and dates.')] },
+    { id: 'dr-plan', name: 'Disaster-Recovery Plan', desc: 'Scenarios, procedures, evidence.', fields: [
+      f('Scenarios covered', 'Zone loss, region loss, data corruption, ransomware — each in scope or explicitly out.'),
+      f('RTO/RPO per service tier', 'Promised vs last-measured.'),
+      f('Failover procedures', 'Step-by-step with roles; automation vs manual steps flagged.'),
+      f('Data recovery', 'Backup locations, restore procedure, corruption-point recovery.'),
+      f('Test history', 'Game days: dates, scenarios, achieved numbers, findings.'),
+      f('Communication plan', 'Stakeholders, regulators, customers — who informs whom, when.')] },
+    { id: 'review-checklist-doc', name: 'Architecture Review Checklist (record)', desc: 'The review\'s written outcome.', fields: [
+      f('Design reviewed and version', '', 'short'),
+      f('Drivers confirmed', 'Reviewers agree the drivers are right and current.'),
+      f('Findings', 'Each: severity, risk, recommendation, owner, due date.'),
+      f('Decoys avoided', 'Concerns raised and consciously dismissed, with reasons — valuable record.'),
+      f('Outcome', 'Approved / approved-with-conditions / revise — and the conditions.', 'short')] },
+    { id: 'tech-debt-register', name: 'Technical Debt Register', desc: 'Visible, owned, priced.', fields: [
+      f('Debt entries', 'Per item: description, interest being paid (incidents, slowdown), remediation cost, owner, quadrant (deliberate/inadvertent × prudent/reckless).'),
+      f('Repayment plan', 'Capacity share or attached-to-feature strategy.'),
+      f('Accepted permanent debt', 'Items consciously never repaid, with rationale.')] },
+    { id: 'roadmap', name: 'Architecture Roadmap', desc: 'Sequenced, confidence-labelled, reviewed quarterly.', fields: [
+      f('Capability roadmap', 'Which capabilities get new/changed technology, when, why.'),
+      f('Technology lifecycle lanes', 'Invest / maintain / contain / retire per platform.'),
+      f('Runway items', 'Enablers sequenced ahead of the features needing them.'),
+      f('Dependencies and decision points', 'What must be decided when.'),
+      f('Confidence levels', 'Committed / planned / speculative — labelled honestly.')] },
+    { id: 'poc-report', name: 'Proof-of-Concept Report', desc: 'What was proven, what was not.', fields: [
+      f('Questions and success criteria (as defined before starting)', ''),
+      f('Setup and scope', 'What was built; what was deliberately skipped (hardening, security).'),
+      f('Results per question', 'Evidence: numbers, not adjectives.'),
+      f('What this PoC does NOT prove', 'The section that prevents the PoC-to-production trap.'),
+      f('Productionisation estimate', 'Honest effort to production quality.'),
+      f('Recommendation', '', 'short')] },
+    { id: 'vendor-evaluation', name: 'Vendor Evaluation', desc: 'Evidence-based, exit-aware.', fields: [
+      f('Requirement fit', 'Scored against your scenarios, not their demo.'),
+      f('PoC results', 'Your data shapes, volumes, failure scenarios.'),
+      f('Reference-call notes', '"What surprised you after signing?" answers.'),
+      f('Operational assessment', 'Support quality, upgrade history, security posture.'),
+      f('Commercial and TCO', '5-year view: licence, integration, run, upgrades, exit.'),
+      f('Lock-in and exit analysis', 'Data export fidelity, notice, assistance, renewal caps.'),
+      f('Recommendation and negotiation points', '')] },
+    { id: 'exec-summary-doc', name: 'Executive Decision Summary', desc: 'One page. Decision first.', fields: [
+      f('Decision needed and recommendation', 'First line. BLUF.', 'short'),
+      f('Three reasons', 'Business language; one line each.'),
+      f('Options compared', 'Cost / time / risk / reversibility per option.'),
+      f('Cost of doing nothing', 'Priced.', 'short'),
+      f('Risks and mitigations', 'Top three only.'),
+      f('The ask', 'Decision, budget, capacity — explicit.', 'short'),
+      f('Success criteria and review date', '', 'short')] }
+  ];
+})(window.SAA.data);

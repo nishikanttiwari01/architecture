@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<title>Software Architect Academy — Self-Test</title>
+<link rel="stylesheet" href="css/main.css">
+<style>body{padding:24px;max-width:900px;margin:0 auto}.pass{color:var(--good)}.fail{color:var(--bad);font-weight:700}</style>
+</head>
+<body>
+<h1>Self-Test</h1>
+<p class="muted">Automated checks: content minimums, referential integrity, core logic. All rows should read PASS.</p>
+<div id="out">Running…</div>
+<div id="toast" class="toast"></div>
+
+<script src="js/core/utils.js"></script>
+<script src="js/core/store.js"></script>
+<script src="js/core/router.js"></script>
+<script src="js/core/search.js"></script>
+<script src="js/components.js"></script>
+<script src="data/curriculum.js"></script>
+<script src="data/curriculum2.js"></script>
+<script src="data/curriculum3.js"></script>
+<script src="data/glossary.js"></script>
+<script src="data/glossary2.js"></script>
+<script src="data/glossary3.js"></script>
+<script src="data/patterns.js"></script>
+<script src="data/quiz.js"></script>
+<script src="data/interview.js"></script>
+<script src="data/interview-banking.js"></script>
+<script src="data/interview2.js"></script>
+<script src="data/interview3.js"></script>
+<script src="data/mocks.js"></script>
+<script src="data/casestudies.js"></script>
+<script src="data/casestudies2.js"></script>
+<script src="data/labs.js"></script>
+<script src="data/reviews.js"></script>
+<script src="data/templates.js"></script>
+<script src="data/events.js"></script>
+<script src="data/toolkit.js"></script>
+<script src="data/references.js"></script>
+<script src="data/paths.js"></script>
+<script src="data/mistakes.js"></script>
+<script src="data/communication.js"></script>
+<script src="data/sysdesign.js"></script>
+<script>
+(function () {
+  'use strict';
+  var S = window.SAA, D = S.data, results = [];
+  function check(name, cond, detail) { results.push({ name: name, ok: !!cond, detail: detail || '' }); }
+
+  /* ---- Content minimums ---- */
+  check('Lessons ≥ 50', D.lessons.length >= 50, D.lessons.length + ' lessons');
+  check('Glossary ≥ 300', D.glossary.length >= 300, D.glossary.length + ' terms');
+  check('Authored quiz questions ≥ 100 (plus ' + D.glossary.length + ' generatable)', D.quizQs.length >= 100, D.quizQs.length + ' authored; total pool ' + (D.quizQs.length + D.glossary.length));
+  check('Quiz pool (authored + glossary-derived) ≥ 300', D.quizQs.length + D.glossary.length >= 300);
+  check('Interview questions ≥ 200', D.interviewQs.length >= 200, D.interviewQs.length);
+  var bankingQs = D.interviewQs.filter(function (q) { return q.banking; });
+  check('Banking interview questions ≥ 100', bankingQs.length >= 100, bankingQs.length);
+  var gen = D.mockSets.filter(function (m) { return m.kind === 'general'; });
+  var bnk = D.mockSets.filter(function (m) { return m.kind === 'banking'; });
+  check('General mock sets ≥ 10', gen.length >= 10, gen.length);
+  check('Banking mock sets ≥ 10', bnk.length >= 10, bnk.length);
+  check('Case studies ≥ 20', D.caseStudies.length >= 20, D.caseStudies.length);
+  check('Labs ≥ 20', D.labs.length >= 20, D.labs.length);
+  check('Patterns ≥ 25', D.patterns.length >= 25, D.patterns.length);
+  check('Templates ≥ 15', D.templates.length >= 15, D.templates.length);
+  check('Review scenarios ≥ 10', D.reviewScenarios.length >= 10, D.reviewScenarios.length);
+  check('Banking events = 19', D.bankingEvents.length === 19, D.bankingEvents.length);
+  check('Learning paths = 12', D.paths.length === 12, D.paths.length);
+  check('System-design exercises = 10', D.sysdesign.length === 10, D.sysdesign.length);
+  check('Mistakes module ≥ 28', D.mistakes.length >= 28, D.mistakes.length);
+  check('Quality attributes = 21', D.qualityAttributes.length === 21, D.qualityAttributes.length);
+  check('Toolkit checklists ≥ 15', D.toolkit.length >= 15, D.toolkit.length);
+
+  /* ---- Referential integrity ---- */
+  var lessonIds = {}, qIds = {}, patternIds = {};
+  D.lessons.forEach(function (l) { lessonIds[l.id] = 1; });
+  D.interviewQs.forEach(function (q) { qIds[q.id] = 1; });
+  D.patterns.forEach(function (p) { patternIds[p.id] = 1; });
+
+  var badMock = [];
+  D.mockSets.forEach(function (m) {
+    m.sections.forEach(function (s) { s.qIds.forEach(function (id) { if (!qIds[id]) badMock.push(m.id + ':' + id); }); });
+  });
+  check('All mock-set question IDs resolve', badMock.length === 0, badMock.join(', ') || 'all resolve');
+
+  var badPath = [];
+  D.paths.forEach(function (p) { p.lessonIds.forEach(function (id) { if (!lessonIds[id]) badPath.push(p.id + ':' + id); }); });
+  check('All learning-path lesson IDs resolve', badPath.length === 0, badPath.join(', ') || 'all resolve');
+
+  var badRel = [];
+  D.lessons.forEach(function (l) { (l.related || []).forEach(function (id) { if (!lessonIds[id]) badRel.push(l.id + '→' + id); }); });
+  check('All related-lesson IDs resolve', badRel.length === 0, badRel.join(', ') || 'all resolve');
+
+  var badPRel = [];
+  D.patterns.forEach(function (p) { (p.related || []).forEach(function (id) { if (!patternIds[id]) badPRel.push(p.id + '→' + id); }); });
+  check('All related-pattern IDs resolve', badPRel.length === 0, badPRel.join(', ') || 'all resolve');
+
+  var badQuizLesson = [];
+  D.quizQs.forEach(function (q) { if (q.lessonId && !lessonIds[q.lessonId]) badQuizLesson.push(q.id + '→' + q.lessonId); });
+  check('All quiz lessonIds resolve', badQuizLesson.length === 0, badQuizLesson.join(', ') || 'all resolve');
+
+  var csIds = {};
+  D.caseStudies.forEach(function (c) { csIds[c.id] = 1; });
+  var badIQLesson = [];
+  D.interviewQs.forEach(function (q) { (q.lessons || []).forEach(function (id) { if (!lessonIds[id] && !csIds[id]) badIQLesson.push(q.id + '→' + id); }); });
+  check('All interview-question revision links resolve (lesson or case study)', badIQLesson.length === 0, badIQLesson.join(', ') || 'all resolve');
+
+  var dupIQ = [];
+  var seen = {};
+  D.interviewQs.forEach(function (q) { if (seen[q.id]) dupIQ.push(q.id); seen[q.id] = 1; });
+  check('Interview question IDs unique', dupIQ.length === 0, dupIQ.join(', ') || 'unique');
+
+  /* ---- Structure completeness ---- */
+  var incompleteLessons = D.lessons.filter(function (l) { return !l.title || !l.objectives.length || !l.sections.length || !l.cat || !l.level; });
+  check('Every lesson complete (title/objectives/sections/cat/level)', incompleteLessons.length === 0, incompleteLessons.map(function (l) { return l.id; }).join(', ') || 'all complete');
+  var incompletePatterns = D.patterns.filter(function (p) { return !p.definition || !p.pros.length || !p.cons.length || !p.use || !p.avoid || !p.interviewQs.length; });
+  check('Every pattern complete', incompletePatterns.length === 0, incompletePatterns.map(function (p) { return p.id; }).join(', ') || 'all complete');
+  var incompleteGloss = D.glossary.filter(function (g) { return !g.term || !g.simple || !g.technical || !g.example; });
+  check('Every glossary term complete', incompleteGloss.length === 0, incompleteGloss.length + ' incomplete');
+  var incompleteCS = D.caseStudies.filter(function (c) { return !c.problem || !c.recommended || !c.failures || !c.rubric.length || !c.followups.length; });
+  check('Every case study complete', incompleteCS.length === 0, incompleteCS.map(function (c) { return c.id; }).join(', ') || 'all complete');
+  var incompleteLabs = D.labs.filter(function (l) { return !l.scenario || !l.modelAnswer || !l.rubric.length || !l.hints.length; });
+  check('Every lab complete', incompleteLabs.length === 0, incompleteLabs.map(function (l) { return l.id; }).join(', ') || 'all complete');
+  var sdIncomplete = D.sysdesign.filter(function (e) { return Object.keys(e.steps).length !== 18; });
+  check('Every system-design exercise has 18 steps', sdIncomplete.length === 0, sdIncomplete.map(function (e) { return e.id; }).join(', ') || 'all 18');
+
+  /* ---- Mock set shape ---- */
+  var badShape = D.mockSets.filter(function (m) { return m.sections.length !== 13 || m.duration < 45 || m.duration > 90; });
+  check('Every mock set: 13 sections, 45–90 min', badShape.length === 0, badShape.map(function (m) { return m.id; }).join(', ') || 'all valid');
+
+  /* ---- Core logic ---- */
+  var md = S.md('# H\n\n**bold** and `code`\n\n- item\n\n| a | b |\n|---|---|\n| 1 | 2 |');
+  check('Markdown renderer: headings/bold/code/list/table', md.indexOf('<h2>') >= 0 && md.indexOf('<strong>') >= 0 && md.indexOf('<code>') >= 0 && md.indexOf('<ul>') >= 0 && md.indexOf('<table>') >= 0);
+  check('Markdown escapes HTML', S.md('<script>x</scr' + 'ipt>').indexOf('<script>') === -1);
+  var dg = S.diagram({ w: 100, h: 100, boxes: [{ id: 'a', x: 1, y: 1, label: 'A' }, { id: 'b', x: 50, y: 50, label: 'B' }], arrows: [{ from: 'a', to: 'b' }] });
+  check('SVG diagram renderer produces SVG', dg.indexOf('<svg') >= 0 && dg.indexOf('</svg>') >= 0);
+
+  // store round-trip (namespaced test — restores after)
+  var exported = S.store.exportJSON();
+  var err = S.store.importJSON(exported);
+  check('Progress export → import round-trip', err === null, err || 'ok');
+  check('Corrupt import rejected cleanly', S.store.importJSON('{"nope":true}') !== null);
+
+  // keyword scoring sanity (mirror of the simulator heuristic)
+  var q = D.interviewQs[0];
+  check('Interview questions carry key-point groups', q.kp && q.kp.length > 0 && q.kp[0].length >= 1);
+
+  // search index
+  S.search.build();
+  var hits = S.search.query('idempot');
+  check('Search returns results for "idempot"', hits.length > 0, hits.length + ' hits');
+
+  /* ---- Render ---- */
+  var pass = results.filter(function (r) { return r.ok; }).length;
+  document.getElementById('out').innerHTML =
+    '<div class="score-banner">' + pass + ' / ' + results.length + ' checks passed</div>' +
+    '<table><tr><th>Check</th><th>Result</th><th>Detail</th></tr>' +
+    results.map(function (r) {
+      return '<tr><td>' + r.name + '</td><td class="' + (r.ok ? 'pass' : 'fail') + '">' + (r.ok ? 'PASS' : 'FAIL') + '</td><td class="small muted">' + (r.detail || '') + '</td></tr>';
+    }).join('') + '</table>' +
+    '<p><a href="index.html">→ Open the application</a></p>';
+})();
+</script>
+</body>
+</html>
