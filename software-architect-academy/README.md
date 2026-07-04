@@ -54,9 +54,18 @@ itself is still fully offline-capable since all content ships as local files.
 
 ## Verifying the installation
 
-Open **http://localhost:8080/test.html** — a self-test page runs ~35 automated checks
-(content minimums, referential integrity, renderer and storage logic) and shows
-PASS/FAIL per check.
+Open **http://localhost:8080/test.html** — a self-test page runs ~45 automated checks:
+content minimums, referential integrity across all content types, routing (including
+query-string routes like `#/search?q=…`), markdown link safety, import validation
+depth, local-date handling, and storage round-trips.
+
+For full workflow coverage, Playwright smoke tests live at the repository root
+(`e2e/smoke.spec.js`): they navigate every major route, exercise global search,
+verify theme persistence across reload, complete an entire mock interview (checking
+that answers survive into feedback and into the reviewable history), and complete a
+quiz (checking answers stay hidden until submission and progress persists). Run with
+`npm install && npx playwright install chromium && npm test` from the repo root;
+CI (`.github/workflows/ci.yml`) runs them plus a `node --check` pass on every push.
 
 ## Your data
 
@@ -129,6 +138,23 @@ questions, labs and case studies. If you add a new data file, register it in
 
 Free-text answers (mock interviews, system-design steps) are scored by **key-point
 coverage**: each question defines the concepts a strong answer contains, and the
-simulator checks which ones your answer mentioned. This is a study heuristic, clearly
-labelled in the UI — it tells you what you missed, not how eloquent you were. Quizzes,
-review scenarios and assessments are scored exactly.
+simulator reports which ones your answer mentioned. The UI presents this explicitly as
+"Key-point coverage: X%" with a disclaimer — it is **not** a judgement of correctness,
+structure, or interview performance, and it cannot detect misused terms or
+contradictions. Use it to find what you missed, then compare your answer against the
+model answer for quality. Quizzes, review scenarios and assessments are scored exactly.
+
+Every mock-interview and system-design attempt is **persisted in full** (answers,
+notes, per-question feedback, time used) and reviewable later via Progress →
+Interview history.
+
+## Changelog
+
+**1.1** — review-driven fixes: query-string routing (global search works), mock
+interview answer saved on timer expiry, full attempt persistence + history view,
+scoring reframed as key-point coverage, strict allow-list import validation, local
+(non-UTC) date handling for streaks, service-worker versioning with network-first
+shell + update notification, markdown link protocol allow-list, expanded self-test
+(~45 checks), Playwright e2e suite + CI, MIT licence.
+
+**1.0** — initial complete build.

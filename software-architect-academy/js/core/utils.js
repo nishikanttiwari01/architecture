@@ -23,7 +23,12 @@ window.SAA = window.SAA || { data: {}, views: {} };
       t = t.replace(/`([^`]+)`/g, '<code>$1</code>');
       t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
       t = t.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-      t = t.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2">$1</a>');
+      t = t.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, function (_, label, href) {
+        // Allow-list: internal hash routes and http(s) only; anything else is neutralised.
+        if (href.indexOf('#/') === 0) return '<a href="' + href + '">' + label + '</a>';
+        if (/^https?:\/\//i.test(href)) return '<a href="' + href + '" target="_blank" rel="noopener noreferrer">' + label + '</a>';
+        return label;
+      });
       return t;
     }
     while (i < lines.length) {
@@ -161,6 +166,11 @@ window.SAA = window.SAA || { data: {}, views: {} };
     return a;
   };
   S.fmtDur = function (min) { return min >= 60 ? Math.floor(min / 60) + 'h ' + (min % 60 ? min % 60 + 'm' : '') : min + ' min'; };
-  S.today = function () { return new Date().toISOString().slice(0, 10); };
+  /* Local calendar date (not UTC) — streaks and activity must follow the learner's day. */
+  S.localDate = function (d) {
+    var y = d.getFullYear(), m = String(d.getMonth() + 1), day = String(d.getDate());
+    return y + '-' + (m.length < 2 ? '0' + m : m) + '-' + (day.length < 2 ? '0' + day : day);
+  };
+  S.today = function () { return S.localDate(new Date()); };
   S.uid = function () { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); };
 })(window.SAA);

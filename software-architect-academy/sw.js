@@ -1,7 +1,10 @@
-/* Service worker — cache-first offline support */
-var CACHE = 'saa-v1';
+/* Service worker — offline support.
+   Strategy: network-first for the HTML shell (so updates arrive), cache-first for
+   versioned static assets, and only successful GET responses are ever cached.
+   BUMP CACHE_VERSION whenever any asset changes. */
+var CACHE_VERSION = 'saa-v2';
 var ASSETS = [
-  './', 'index.html', 'manifest.webmanifest', 'css/main.css',
+  './', 'index.html', 'test.html', 'manifest.webmanifest', 'css/main.css',
   'js/core/utils.js', 'js/core/store.js', 'js/core/router.js', 'js/core/search.js',
   'js/components.js', 'js/app.js',
   'js/views/dashboard.js', 'js/views/learn.js', 'js/views/library.js',
@@ -13,20 +16,49 @@ var ASSETS = [
   'data/events.js', 'data/toolkit.js', 'data/references.js', 'data/paths.js',
   'data/mistakes.js', 'data/communication.js', 'data/sysdesign.js'
 ];
+
 self.addEventListener('install', function (e) {
-  e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(ASSETS); }).then(function () { return self.skipWaiting(); }));
+  e.waitUntil(caches.open(CACHE_VERSION).then(function (c) { return c.addAll(ASSETS); }).then(function () { return self.skipWaiting(); }));
 });
+
 self.addEventListener('activate', function (e) {
   e.waitUntil(caches.keys().then(function (keys) {
-    return Promise.all(keys.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); }));
+    return Promise.all(keys.filter(function (k) { return k !== CACHE_VERSION; }).map(function (k) { return caches.delete(k); }));
   }).then(function () { return self.clients.claim(); }));
 });
+
 self.addEventListener('fetch', function (e) {
-  e.respondWith(caches.match(e.request, { ignoreSearch: true }).then(function (hit) {
-    return hit || fetch(e.request).then(function (res) {
-      var copy = res.clone();
-      caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
-      return res;
-    });
-  }));
+  if (e.request.method !== 'GET') return;
+  var url = new URL(e.request.url);
+  var isShell = e.request.mode === 'navigate' || url.pathname.endsWith('/index.html') || url.pathname.endsWith('/');
+
+  if (isShell) {
+    // Network-first: fresh shell when online, cached shell offline.
+    e.respondWith(
+      fetch(e.request).then(function (res) {
+        if (res && res.ok) {
+          var copy = res.clone();
+          caches.open(CACHE_VERSION).then(function (c) { c.put(e.request, copy); });
+        }
+        return res;
+      }).catch(function () {
+        return caches.match(e.request).then(function (hit) { return hit || caches.match('index.html'); });
+      })
+    );
+    return;
+  }
+
+  // Static assets: cache-first, populate from network on miss, cache only 200s.
+  e.respondWith(
+    caches.match(e.request).then(function (hit) {
+      if (hit) return hit;
+      return fetch(e.request).then(function (res) {
+        if (res && res.ok && url.origin === location.origin) {
+          var copy = res.clone();
+          caches.open(CACHE_VERSION).then(function (c) { c.put(e.request, copy); });
+        }
+        return res;
+      });
+    })
+  );
 });

@@ -53,6 +53,53 @@
     catch (e) { S.toast('Warning: could not save progress (storage full or blocked).'); }
   }
 
+  /* Allow-list validation of imported state: known keys, correct types, sane values.
+     Returns an error string or null. Unknown top-level keys are rejected outright. */
+  function validateImport(data) {
+    var isObj = function (v) { return Object.prototype.toString.call(v) === '[object Object]'; };
+    var TYPES = {
+      version: 'number', settings: 'object', profile: 'objectOrNull',
+      lessons: 'object', quizzes: 'object', labs: 'object', cases: 'object', reviews: 'object',
+      interviews: 'array', flash: 'object', bookmarks: 'array', notes: 'object',
+      adrs: 'array', bvbs: 'array', templatesSaved: 'object', achievements: 'object',
+      activity: 'object', lastVisited: 'array'
+    };
+    var keys = Object.keys(data);
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i], want = TYPES[k], v = data[k];
+      if (!want) return 'Unknown field in import: "' + k + '".';
+      if (want === 'number' && typeof v !== 'number') return 'Field "' + k + '" must be a number.';
+      if (want === 'array' && !Array.isArray(v)) return 'Field "' + k + '" must be an array.';
+      if (want === 'object' && !isObj(v)) return 'Field "' + k + '" must be an object.';
+      if (want === 'objectOrNull' && v !== null && !isObj(v)) return 'Field "' + k + '" must be an object or null.';
+    }
+    // Value-level checks on the fields views iterate over.
+    if (data.notes) {
+      var nk = Object.keys(data.notes);
+      for (var n = 0; n < nk.length; n++) {
+        if (typeof data.notes[nk[n]] !== 'string' || data.notes[nk[n]].length > 200000) return 'Invalid note content in import.';
+      }
+    }
+    if (data.bookmarks && data.bookmarks.some(function (b) { return !isObj(b) || typeof b.id !== 'string' || typeof b.type !== 'string'; })) return 'Invalid bookmark entry in import.';
+    if (data.interviews && data.interviews.some(function (x) { return !isObj(x); })) return 'Invalid interview entry in import.';
+    if (data.adrs && data.adrs.some(function (x) { return !isObj(x); })) return 'Invalid ADR entry in import.';
+    if (data.bvbs && data.bvbs.some(function (x) { return !isObj(x); })) return 'Invalid assessment entry in import.';
+    if (data.lastVisited && data.lastVisited.some(function (x) { return !isObj(x) || typeof x.route !== 'string'; })) return 'Invalid history entry in import.';
+    var perRecord = [['lessons', null], ['quizzes', null], ['labs', null], ['cases', null], ['reviews', null], ['flash', null], ['achievements', 'string'], ['activity', 'number']];
+    for (var p = 0; p < perRecord.length; p++) {
+      var field = perRecord[p][0], leaf = perRecord[p][1];
+      if (!data[field]) continue;
+      var rk = Object.keys(data[field]);
+      for (var r = 0; r < rk.length; r++) {
+        var rv = data[field][rk[r]];
+        if (leaf === 'string' && typeof rv !== 'string') return 'Invalid value in "' + field + '".';
+        if (leaf === 'number' && typeof rv !== 'number') return 'Invalid value in "' + field + '".';
+        if (leaf === null && !isObj(rv)) return 'Invalid record in "' + field + '".';
+      }
+    }
+    return null;
+  }
+
   S.store = {
     get state() { return state; },
     save: save,
@@ -65,7 +112,7 @@
     streak: function () {
       var n = 0, d = new Date();
       for (;;) {
-        var key = d.toISOString().slice(0, 10);
+        var key = S.localDate(d);
         if (state.activity[key]) { n++; d.setDate(d.getDate() - 1); }
         else if (n === 0 && key === S.today()) { d.setDate(d.getDate() - 1); } // today not studied yet
         else break;
@@ -126,10 +173,16 @@
     },
     importJSON: function (text) {
       var parsed;
+      if (typeof text !== 'string' || text.length > 20 * 1024 * 1024) return 'File too large or unreadable.';
       try { parsed = JSON.parse(text); } catch (e) { return 'Invalid JSON file.'; }
       var data = parsed && parsed.data;
       if (!data || typeof data !== 'object' || data.version !== 1) return 'Not a valid Software Architect Academy export.';
-      state = merge(clone(DEFAULTS), data);
+      var err = validateImport(data);
+      if (err) return err;
+      // Build the candidate state fully, then swap only on success (never mutate live state mid-import).
+      var candidate = merge(clone(DEFAULTS), data);
+      if (['dark', 'light'].indexOf(candidate.settings.theme) < 0) candidate.settings.theme = 'dark';
+      state = candidate;
       save();
       return null;
     },

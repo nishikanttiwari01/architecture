@@ -42,6 +42,13 @@
 <script src="data/mistakes.js"></script>
 <script src="data/communication.js"></script>
 <script src="data/sysdesign.js"></script>
+<!-- Views register their routes at load time; loading them lets us verify routing without navigation -->
+<script src="js/views/dashboard.js"></script>
+<script src="js/views/learn.js"></script>
+<script src="js/views/library.js"></script>
+<script src="js/views/tools.js"></script>
+<script src="js/views/practice.js"></script>
+<script src="js/views/user.js"></script>
 <script>
 (function () {
   'use strict';
@@ -150,6 +157,44 @@
   S.search.build();
   var hits = S.search.query('idempot');
   check('Search returns results for "idempot"', hits.length > 0, hits.length + ' hits');
+
+  /* ---- Routing: every navigation target and parameterised route must resolve ---- */
+  var ROUTES = [
+    '/dashboard', '/paths', '/courses', '/progress',
+    '/track/foundations', '/track/modelling', '/track/distributed', '/track/cloud', '/track/security',
+    '/track/data', '/track/integration', '/track/banking', '/track/java', '/track/kafka', '/track/microservices',
+    '/patterns', '/case-studies', '/labs', '/review-sim', '/assessments', '/mistakes', '/communication',
+    '/interview', '/mock', '/sysdesign',
+    '/toolkit', '/adr', '/bvb', '/qaw', '/calculators', '/datastore', '/kafka-designer', '/diagram-challenge', '/templates',
+    '/glossary', '/flashcards', '/references', '/bookmarks', '/notes', '/settings', '/search',
+    '/lesson/f1', '/lesson/b5', '/pattern/layered', '/pattern/outbox', '/case-study/cs1', '/case-study/cs11',
+    '/lab/lab1', '/lab/lab27', '/review-sim/rv1', '/mock/run/general-1', '/mock/run/banking-10',
+    '/sysdesign/run/sd1', '/template/adr', '/path/dev-to-architect', '/assessment/level-1', '/assessment/readiness',
+    '/interview-history/some-id'
+  ];
+  var unrouted = ROUTES.filter(function (r) { return !S.router.find(r); });
+  check('All ' + ROUTES.length + ' navigation/parameterised routes resolve', unrouted.length === 0, unrouted.join(', ') || 'all resolve');
+  check('Query-string routes resolve (#/search?q=idempotency)', !!S.router.find('/search?q=idempotency'));
+  check('Query-string routes resolve (#/courses?level=2)', !!S.router.find('/courses?level=2'));
+  check('Unknown route correctly rejected', !S.router.find('/no-such-page'));
+
+  /* ---- Markdown link safety ---- */
+  var evil = S.md('[click](javascript:alert(1)) and [ok](#/dashboard) and [ext](https://example.com)');
+  check('javascript: links neutralised', evil.indexOf('javascript:') === -1);
+  check('Internal hash links preserved', evil.indexOf('href="#/dashboard"') >= 0);
+  check('External links get rel=noopener', evil.indexOf('noopener') >= 0);
+
+  /* ---- Import validation depth ---- */
+  var backup = S.store.exportJSON();
+  check('Typed-field corruption rejected (interviews as string)',
+    S.store.importJSON(JSON.stringify({ data: { version: 1, interviews: 'not-an-array' } })) !== null);
+  check('Unknown-key import rejected',
+    S.store.importJSON(JSON.stringify({ data: { version: 1, evilField: {} } })) !== null);
+  check('Live state untouched after rejected imports', S.store.importJSON(backup) === null);
+
+  /* ---- Local-date behaviour ---- */
+  var t = S.today();
+  check('S.today() is local calendar date (YYYY-MM-DD)', /^\d{4}-\d{2}-\d{2}$/.test(t) && t === S.localDate(new Date()));
 
   /* ---- Render ---- */
   var pass = results.filter(function (r) { return r.ok; }).length;

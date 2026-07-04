@@ -1,0 +1,12 @@
+{
+  "name": "software-architect-academy",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Offline-first interactive learning platform for software, solution, and banking technology architects",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0"
+  }
+}

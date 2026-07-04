@@ -125,6 +125,12 @@
       // Service worker: only meaningful over http(s)
       if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
         navigator.serviceWorker.register('sw.js').catch(function () { /* offline caching unavailable */ });
+        // A new service worker took control → new version is cached; offer a refresh.
+        var hadController = !!navigator.serviceWorker.controller;
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+          if (hadController) S.toast('Update available — refresh the page to load the newest version.');
+          hadController = true;
+        });
       }
     }
   };

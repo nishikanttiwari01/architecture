@@ -323,6 +323,22 @@
     });
     var idx = -1, answers = {}, notes = '', remaining = set.duration * 60, timerHandle = null;
 
+    /* Save whatever is in the visible textarea — called on nav, timer expiry, and hash-leave,
+       so a running answer is never lost (review finding: timer expiry discarded the current answer). */
+    function saveCurrentAnswer() {
+      if (idx < 0 || idx >= qs.length) return;
+      var box = body.querySelector('#mi-a');
+      if (!box) return;
+      var item = qs[idx];
+      var prev = answers[item.q.id] || {};
+      answers[item.q.id] = { text: box.value, hint: !!prev.hint };
+      var hintEl = body.querySelector('#mi-hint');
+      if (hintEl && hintEl.open) answers[item.q.id].hint = true;
+      var notesBox = body.querySelector('#mi-notes');
+      if (notesBox) notes = notesBox.value;
+    }
+    window.addEventListener('hashchange', saveCurrentAnswer, { once: true });
+
     main.innerHTML = S.ui.crumbs([{ label: 'Home', href: '/dashboard' }, { label: 'Mock Interviews', href: '/mock' }, { label: set.title }]);
     var head = S.h('<div class="toolbar"><h1 style="margin:0;flex:1;font-size:1.2rem">' + S.esc(set.title) + '</h1><span class="timer" id="mi-timer">' + fmtT(remaining) + '</span></div>');
     main.appendChild(head);
@@ -372,8 +388,9 @@
     }
 
     function finish() {
+      saveCurrentAnswer();
       clearInterval(timerHandle);
-      // score
+      // score = key-point coverage (a study heuristic, presented as such — never as a verdict)
       var perQ = qs.map(function (item) {
         var a = answers[item.q.id] || { text: '' };
         var ks = keywordScore(a.text, item.q.kp);
@@ -387,24 +404,33 @@
         catScores[c].s += r.pct; catScores[c].n++;
       });
       var overall = Math.round(perQ.reduce(function (a, r) { return a + r.pct; }, 0) / (perQ.length || 1));
-      var rec = { id: S.uid(), setId: set.id, title: set.title, kind: set.kind, date: S.today(), scores: { overall: overall } };
+      var rec = {
+        id: S.uid(), setId: set.id, title: set.title, kind: set.kind, date: S.today(),
+        durationSeconds: set.duration * 60 - Math.max(0, remaining),
+        scores: { overall: overall },
+        answers: answers, notes: notes,
+        feedback: perQ.map(function (r) {
+          return { qId: r.item.q.id, section: r.item.section, pct: r.pct, matched: r.ks.matched, missed: r.ks.missed };
+        })
+      };
       Object.keys(catScores).forEach(function (c) { rec.scores[c] = Math.round(catScores[c].s / catScores[c].n); });
       S.store.state.interviews.push(rec);
       S.store.save(); S.store.touchActivity(); S.store.checkAchievements();
 
       var strengths = Object.keys(rec.scores).filter(function (k) { return k !== 'overall' && rec.scores[k] >= 70; });
       var weaknesses = Object.keys(rec.scores).filter(function (k) { return k !== 'overall' && rec.scores[k] < 50; });
-      var readiness = overall >= 75 ? 'Interview-ready for this track. Keep momentum with a harder set.' :
-        overall >= 55 ? 'Close — focus revision on the weak categories below, then retake.' :
-        'Not yet ready — revisit the linked lessons before your next attempt.';
+      var guidance = overall >= 75 ? 'High coverage — now compare your answers against the model answers for structure and trade-off quality, then try a harder set.' :
+        overall >= 55 ? 'Moderate coverage — revise the weak categories below and retake.' :
+        'Low coverage — revisit the linked lessons before your next attempt.';
 
-      var html = '<div class="score-banner">Overall: ' + overall + '% — ' + readiness + '</div>' +
-        '<h2>Category scores</h2>' + Object.keys(rec.scores).filter(function (k) { return k !== 'overall'; }).map(function (k) {
+      var html = '<div class="score-banner">Key-point coverage: ' + overall + '%</div>' +
+        '<div class="callout"><div class="co-title">What this number means</div>Your answers mentioned ' + overall + '% of the concepts a strong answer contains. This is <strong>not</strong> a judgement of correctness, clarity, structure or interview performance — it cannot detect misused terms, contradictions, or reasoning quality. ' + guidance + '</div>' +
+        '<h2>Coverage by category</h2>' + Object.keys(rec.scores).filter(function (k) { return k !== 'overall'; }).map(function (k) {
           return '<div class="small" style="display:flex;justify-content:space-between"><span>' + S.esc(k) + '</span><span>' + rec.scores[k] + '%</span></div>' + S.ui.bar(rec.scores[k]);
         }).join('');
-      if (strengths.length) html += '<p><strong>Strengths:</strong> ' + strengths.map(function (s2) { return S.ui.chip(s2, 'good'); }).join(' ') + '</p>';
-      if (weaknesses.length) html += '<p><strong>Weaknesses:</strong> ' + weaknesses.map(function (s2) { return S.ui.chip(s2, 'warn'); }).join(' ') + '</p>';
-      html += '<h2>Question-by-question feedback</h2><p class="muted small">Scoring counts the key concepts your answer mentioned. Read the model answers critically — coverage is necessary but not sufficient; in a live interview, structure and trade-off reasoning matter as much.</p>';
+      if (strengths.length) html += '<p><strong>Highest coverage:</strong> ' + strengths.map(function (s2) { return S.ui.chip(s2, 'good'); }).join(' ') + '</p>';
+      if (weaknesses.length) html += '<p><strong>Focus areas:</strong> ' + weaknesses.map(function (s2) { return S.ui.chip(s2, 'warn'); }).join(' ') + '</p>';
+      html += '<h2>Question-by-question feedback</h2><p class="muted small">This attempt (answers, notes, feedback) is saved — reopen it any time from <a href="#/progress">Progress</a>.</p>';
       perQ.forEach(function (r, i) {
         html += '<details class="quiz-q" style="padding:12px 16px"><summary><strong>Q' + (i + 1) + '.</strong> ' + S.esc(r.item.q.q) + ' — <strong>' + r.pct + '%</strong></summary>' +
           '<p><strong>Your answer:</strong></p><blockquote>' + (S.esc(r.ans) || '<em>no answer</em>') + '</blockquote>' +
@@ -421,6 +447,49 @@
       window.scrollTo(0, 0);
     }
     renderIntro();
+  });
+
+  /* ---------------- Interview history (review a saved attempt) ---------------- */
+  S.router.add('/interview-history/:id', function (main, p) {
+    var rec = (S.store.state.interviews || []).find(function (x) { return x.id === p.id; });
+    if (!rec) { main.innerHTML = '<h1>Attempt not found</h1><p><a href="#/progress">Back to progress</a></p>'; return; }
+    var html = S.ui.crumbs([{ label: 'Home', href: '/dashboard' }, { label: 'Progress', href: '/progress' }, { label: rec.title }]) +
+      '<h1>' + S.esc(rec.title) + '</h1>' +
+      '<p>' + S.ui.chip(rec.kind === 'banking' ? 'Banking' : 'General') + ' ' + S.ui.chip(rec.date) +
+      (rec.durationSeconds ? ' ' + S.ui.chip(Math.round(rec.durationSeconds / 60) + ' min used') : '') + '</p>' +
+      '<div class="score-banner">Key-point coverage: ' + (rec.scores ? rec.scores.overall : '—') + '%</div>';
+    if (rec.scores) {
+      html += '<h2>Coverage by category</h2>' + Object.keys(rec.scores).filter(function (k) { return k !== 'overall'; }).map(function (k) {
+        return '<div class="small" style="display:flex;justify-content:space-between"><span>' + S.esc(k) + '</span><span>' + rec.scores[k] + '%</span></div>' + S.ui.bar(rec.scores[k]);
+      }).join('');
+    }
+    if (rec.feedback && rec.feedback.length) {
+      html += '<h2>Your answers</h2>';
+      rec.feedback.forEach(function (f, i) {
+        var q = (S.data.interviewQs || []).find(function (x) { return x.id === f.qId; });
+        var ans = rec.answers && rec.answers[f.qId] ? rec.answers[f.qId].text : '';
+        html += '<details class="quiz-q" style="padding:12px 16px"><summary><strong>Q' + (i + 1) + '.</strong> ' +
+          S.esc(q ? q.q : f.qId) + ' — ' + f.pct + '%</summary>' +
+          '<p><strong>Your answer:</strong></p><blockquote>' + (S.esc(ans) || '<em>no answer</em>') + '</blockquote>' +
+          (f.matched && f.matched.length ? '<p><strong>✅ Covered:</strong> ' + f.matched.map(S.esc).join(' · ') + '</p>' : '') +
+          (f.missed && f.missed.length ? '<p><strong>❌ Missed:</strong> ' + f.missed.map(S.esc).join(' · ') + '</p>' : '') +
+          (q ? '<div class="callout good"><div class="co-title">Suggested improved answer</div>' + S.esc(q.strong) + '</div>' +
+            (q.lessons && q.lessons.length ? '<p class="small">Revise: ' + q.lessons.map(revLink).join(', ') + '</p>' : '') : '') +
+          '</details>';
+      });
+    } else if (rec.steps) {
+      html += '<h2>Your answers</h2>';
+      rec.steps.forEach(function (st2, i) {
+        html += '<details class="quiz-q" style="padding:12px 16px"><summary><strong>' + (i + 1) + '. ' + S.esc(st2.name) + '</strong> — ' + st2.pct + '%</summary>' +
+          '<p><strong>Your answer:</strong></p><blockquote>' + (S.esc(st2.answer) || '<em>no answer</em>') + '</blockquote>' +
+          (st2.missed && st2.missed.length ? '<p><strong>❌ Missed:</strong> ' + st2.missed.map(S.esc).join(' · ') + '</p>' : '<p>✅ All key points covered.</p>') +
+          '</details>';
+      });
+    } else {
+      html += '<p class="muted">This attempt was recorded before answer persistence was added — only the scores are available.</p>';
+    }
+    if (rec.notes) html += '<h2>Your interview notes</h2><blockquote>' + S.esc(rec.notes) + '</blockquote>';
+    main.innerHTML = html;
   });
 
   /* ---------------- System-design simulator ---------------- */
@@ -491,11 +560,23 @@
       Object.keys(dims).forEach(function (d) {
         scores[d] = dims[d].length ? Math.round(dims[d].reduce(function (a, b) { return a + b; }, 0) / dims[d].length) : null;
       });
-      S.store.state.interviews.push({ id: S.uid(), setId: ex.id, title: 'System design: ' + ex.title, kind: ex.banking ? 'banking' : 'general', date: S.today(), scores: { overall: overall } });
+      // Persist the full attempt (answers + per-step feedback), reviewable from Progress.
+      var stepRecords = SD_STEPS.filter(function (st2) { return ex.steps[st2[0]]; }).map(function (st2) {
+        var ks = stepScores[st2[0]];
+        return { key: st2[0], name: st2[1], pct: ks.pct, answer: answers[st2[0]] || '', missed: ks.missed };
+      });
+      var savedScores = { overall: overall };
+      Object.keys(scores).forEach(function (k) { if (k !== 'overall' && scores[k] !== null) savedScores[k] = scores[k]; });
+      S.store.state.interviews.push({
+        id: S.uid(), setId: ex.id, title: 'System design: ' + ex.title,
+        kind: ex.banking ? 'banking' : 'general', date: S.today(),
+        scores: savedScores, steps: stepRecords
+      });
       S.store.save(); S.store.touchActivity(); S.store.checkAchievements();
 
-      var readiness = overall >= 75 ? 'Strong — interview-ready on this problem class.' : overall >= 55 ? 'Promising — tighten the weak steps below.' : 'Keep practising — study the model answers and retry.';
-      var html = '<div class="score-banner">Overall: ' + overall + '% — ' + readiness + '</div><h2>Dimension scores</h2>';
+      var guidance = overall >= 75 ? 'High coverage — now compare your reasoning against the model answers for structure and trade-off quality.' : overall >= 55 ? 'Moderate coverage — tighten the weak steps below.' : 'Low coverage — study the model answers and retry.';
+      var html = '<div class="score-banner">Key-point coverage: ' + overall + '%</div>' +
+        '<div class="callout"><div class="co-title">What this number means</div>Your answers mentioned ' + overall + '% of the expected concepts. It is not a judgement of correctness, structure or communication quality — compare against the model answers below for that. ' + guidance + '</div><h2>Coverage by dimension</h2>';
       Object.keys(scores).forEach(function (k) {
         if (k === 'overall' || scores[k] === null) return;
         html += '<div class="small" style="display:flex;justify-content:space-between"><span>' + k + '</span><span>' + scores[k] + '%</span></div>' + S.ui.bar(scores[k]);

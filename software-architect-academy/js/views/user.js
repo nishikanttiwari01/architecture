@@ -49,9 +49,11 @@
 
     // Interview history
     if (st.interviews.length) {
-      html += '<h2>Interview history</h2><table><tr><th>Date</th><th>Set</th><th>Kind</th><th>Score</th></tr>' +
+      html += '<h2>Interview history</h2><p class="muted small">Scores are key-point coverage — click an attempt to review your answers and the feedback.</p>' +
+        '<table><tr><th>Date</th><th>Set</th><th>Kind</th><th>Coverage</th><th></th></tr>' +
         st.interviews.slice().reverse().map(function (i) {
-          return '<tr><td>' + i.date + '</td><td>' + S.esc(i.title || i.setId) + '</td><td>' + i.kind + '</td><td>' + (i.scores ? i.scores.overall + '%' : '—') + '</td></tr>';
+          return '<tr><td>' + i.date + '</td><td>' + S.esc(i.title || i.setId) + '</td><td>' + i.kind + '</td><td>' + (i.scores ? i.scores.overall + '%' : '—') + '</td>' +
+            '<td><a href="#/interview-history/' + i.id + '">Review →</a></td></tr>';
         }).join('') + '</table>';
     }
 
